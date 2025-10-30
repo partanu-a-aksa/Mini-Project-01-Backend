@@ -40,7 +40,6 @@ export async function getMe(req: Request, res: Response) {
         email: true,
         role: true,
         profilePic: true,
-        points: true,
         createdAt: true,
       },
     });
