@@ -1,33 +1,77 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model Organizer {
-  id           String  @id @default(cuid())
-  organization String
-  email        String  @unique
-  password     String
-  phone        String?
-  website      String?
-  logoUrl      String?
-  description  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum Role {
+  ATTENDEE
+  ORGANIZER
 }
 
-model Customer {
-  id       String  @id @default(cuid())
-  username String
-  email    String  @unique
-  password String
-  phone    String?
-  city     String?
+model User {
+  id             String        @id @default(uuid())
+  name           String
+  email          String        @unique
+  password       String
+  role           Role          @default(ATTENDEE)
+  referralCode   String        @unique
+  referredByCode String?
+  points         Int           @default(0)
+  profile        Profile?
+  coupons        Coupon[]
+  events         Event[]       @relation("OrganizerEvents")
+  transactions   Transaction[]
+  createdAt      DateTime      @default(now())
+}
+
+model Profile {
+  id             Int      @id @default(autoincrement())
+  userId         String   @unique
+  profilePicture String?
+  bio            String?
+  phoneNumber    String?
+  user           User     @relation(fields: [userId], references: [id])
+}
+
+model Coupon {
+  id         String   @id @default(uuid())
+  code       String   @unique
+  discount   Int      @default(10)
+  userId     String
+  expiresAt  DateTime
+  user       User     @relation(fields: [userId], references: [id])
+  createdAt  DateTime @default(now())
+}
+
+model Event {
+  id             String        @id @default(uuid())
+  title          String
+  description    String?
+  location       String?
+  price          Int
+  availableSeats Int
+  startDate      DateTime
+  endDate        DateTime
+  organizerId    String
+  organizer      User          @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  transactions   Transaction[]
+  createdAt      DateTime      @default(now())
+}
+
+model Transaction {
+  id             String    @id @default(uuid())
+  userId         String
+  eventId        String
+  originalAmount Int
+  usedPoints     Int       @default(0)
+  finalAmount    Int
+  status         String    @default("PENDING") // PENDING | PAID | CANCELED
+  proofUrl       String?
+  user           User      @relation(fields: [userId], references: [id])
+  event          Event     @relation(fields: [eventId], references: [id])
+  createdAt      DateTime  @default(now())
 }
