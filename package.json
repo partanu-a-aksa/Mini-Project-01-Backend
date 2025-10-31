@@ -13,7 +13,7 @@
   "author": "PartanuArdi",
   "license": "ISC",
   "dependencies": {
-    "@prisma/client": "^6.17.1",
+    "@prisma/client": "^6.18.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -29,7 +29,7 @@
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.9.1",
-    "prisma": "^6.17.1",
+    "prisma": "^6.18.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
