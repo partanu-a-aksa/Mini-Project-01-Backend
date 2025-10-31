@@ -18,6 +18,7 @@ export const registerUser = async (req: Request, res: Response) => {
     });
 
     const hashedPass = await bcrypt.hash(parsedData.password, 12);
+
     const user = await prisma.user.create({
       data: {
         fullName: parsedData.fullName,
