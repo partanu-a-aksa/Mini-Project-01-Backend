@@ -5,6 +5,7 @@ import type { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import authRoutes from "./routers/auth.router.js";
 import userRoutes from "./routers/user.route.js";
+import eventRoutes from "./routers/event.route.js";
 import cookieParser from "cookie-parser";
 
 const PORT = process.env.PORT;
@@ -26,6 +27,7 @@ app.get("/status", (req: Request, res: Response) => {
 
 app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
+app.use("/event", eventRoutes);
 
 app.listen(PORT, () => {
   console.log(`API Running at http://localhost:${PORT} `);

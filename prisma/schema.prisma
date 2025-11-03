@@ -37,51 +37,51 @@ enum EventCategory {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  full_name       String
-  email           String   @unique
-  password        String
-  role            Role
-  referral_code   String   @unique
-  profile_picture String?
-  is_verified     Boolean  @default(false)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id             String  @id @default(uuid())
+  fullName       String
+  email          String  @unique
+  password       String
+  role           Role
+  referralCode   String? @unique
+  profilePicture String?
 
-  events                 Event[]
-  transactions           Transaction[]
-  referral_logs_sent     ReferralLog[] @relation("SentReferrals")
-  referral_logs_received ReferralLog[] @relation("ReceivedReferrals")
-  coupons                Coupon[]
-  points                 Point[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events               Event[]
+  transactions         Transaction[]
+  referralLogsSent     ReferralLog[] @relation("SentReferrals")
+  referralLogsReceived ReferralLog[] @relation("ReceivedReferrals")
+  coupons              Coupon[]
+  points               Point[]
 }
 
 model ReferralLog {
-  id               Int      @id @default(autoincrement())
-  referred_by      User     @relation("SentReferrals", fields: [referred_by_id], references: [id])
-  referred_by_id   String
-  referral_used    User     @relation("ReceivedReferrals", fields: [referral_used_id], references: [id])
-  referral_used_id String
-  created_at       DateTime @default(now())
-  updated_at       DateTime @default(now()) @updatedAt
+  id             Int      @id @default(autoincrement())
+  referredBy     User     @relation("SentReferrals", fields: [referredById], references: [id])
+  referredById   String
+  referralUsed   User     @relation("ReceivedReferrals", fields: [referralUsedId], references: [id])
+  referralUsedId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 }
 
 model Event {
-  id              Int           @id @default(autoincrement())
-  organizer       User          @relation(fields: [organizer_id], references: [id])
-  organizer_id    String
-  name            String
-  description     String
-  category        EventCategory
-  location        String
-  paid            Boolean
-  price           Int
-  start_date      DateTime
-  end_date        DateTime
-  total_seats     Int
-  remaining_seats Int
-  created_at      DateTime      @default(now())
-  updated_at      DateTime      @default(now()) @updatedAt
+  id             Int           @id @default(autoincrement())
+  organizer      User          @relation(fields: [organizerId], references: [id])
+  organizerId    String
+  name           String
+  description    String
+  category       EventCategory
+  location       String
+  paid           Boolean
+  price          Int
+  startDate      DateTime
+  endDate        DateTime
+  totalSeats     Int
+  remainingSeats Int
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
 
   vouchers     Voucher[]
   transactions Transaction[]
@@ -89,76 +89,76 @@ model Event {
 }
 
 model Voucher {
-  id              Int      @id @default(autoincrement())
-  event           Event    @relation(fields: [event_id], references: [id])
-  event_id        Int
-  code            String   @unique
-  discount_amount Int
-  discount_type   String
-  start_date      DateTime
-  end_date        DateTime
-  is_active       Boolean  @default(true)
-  updated_at      DateTime @default(now()) @updatedAt
+  id             Int      @id @default(autoincrement())
+  event          Event    @relation(fields: [eventId], references: [id])
+  eventId        Int
+  code           String   @unique
+  discountAmount Int
+  discountType   String
+  startDate      DateTime
+  endDate        DateTime
+  isActive       Boolean  @default(true)
+  updatedAt      DateTime @default(now()) @updatedAt
 
   transactions Transaction[]
 }
 
 model Transaction {
-  id              Int               @id @default(autoincrement())
-  user            User              @relation(fields: [user_id], references: [id])
-  user_id         String
-  event           Event             @relation(fields: [event_id], references: [id])
-  event_id        Int
-  ticket_quantity Int
-  price           Int
-  total_price     Int
-  status          TransactionStatus @default(WAITING_FOR_PAYMENT)
-  payment_proof   String?
-  used_point      Int               @default(0)
-  used_voucher    Voucher?          @relation(fields: [used_voucher_id], references: [id])
-  used_voucher_id Int?
-  used_coupon     Coupon?           @relation(fields: [used_coupon_id], references: [id])
-  used_coupon_id  Int?
-  created_at      DateTime          @default(now())
-  updated_at      DateTime          @default(now()) @updatedAt
+  id             Int               @id @default(autoincrement())
+  user           User              @relation(fields: [userId], references: [id])
+  userId         String
+  event          Event             @relation(fields: [eventId], references: [id])
+  eventId        Int
+  ticketQuantity Int
+  price          Int
+  totalPrice     Int
+  status         TransactionStatus @default(WAITING_FOR_PAYMENT)
+  paymentProof   String?
+  usedPoint      Int               @default(0)
+  usedVoucher    Voucher?          @relation(fields: [usedVoucherId], references: [id])
+  usedVoucherId  Int?
+  usedCoupon     Coupon?           @relation(fields: [usedCouponId], references: [id])
+  usedCouponId   Int?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @default(now()) @updatedAt
 
   review Review?
 }
 
 model Coupon {
-  id              Int      @id @default(autoincrement())
-  user            User     @relation(fields: [user_id], references: [id])
-  user_id         String
-  code            String   @unique
-  discount_amount Int
-  expired_at      DateTime
-  is_used         Boolean  @default(false)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @default(now()) @updatedAt
+  id             Int      @id @default(autoincrement())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  code           String   @unique
+  discountAmount Int
+  expiredAt      DateTime
+  isUsed         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
 
   transactions Transaction[]
 }
 
 model Point {
-  id         Int         @id @default(autoincrement())
-  user       User        @relation(fields: [user_id], references: [id])
-  user_id    String
-  amount     Int
-  source     PointSource
-  expired_at DateTime
-  is_expired Boolean     @default(false)
-  created_at DateTime    @default(now())
-  updated_at DateTime    @default(now()) @updatedAt
+  id        Int         @id @default(autoincrement())
+  user      User        @relation(fields: [userId], references: [id])
+  userId    String
+  amount    Int
+  source    PointSource
+  expiredAt DateTime
+  isExpired Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @default(now()) @updatedAt
 }
 
 model Review {
-  id             Int         @id @default(autoincrement())
-  transaction    Transaction @relation(fields: [transaction_id], references: [id])
-  transaction_id Int         @unique
-  event          Event       @relation(fields: [event_id], references: [id])
-  event_id       Int
-  rating         Int
-  comment        String
-  created_at     DateTime    @default(now())
-  updated_at     DateTime    @default(now()) @updatedAt
+  id            Int         @id @default(autoincrement())
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+  transactionId Int         @unique
+  event         Event       @relation(fields: [eventId], references: [id])
+  eventId       Int
+  rating        Int
+  comment       String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
 }
