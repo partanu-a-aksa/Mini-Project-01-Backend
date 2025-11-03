@@ -3,6 +3,23 @@ import { PrismaClient } from "../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
+export async function getOngoingEvents(req: Request, res: Response) {
+  try {
+    const events = await prisma.event.findMany();
+
+    res.json({
+      success: true,
+      data: events,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching events.",
+    });
+  }
+}
+
 export async function getEventsByOrganizer(req: Request, res: Response) {
   try {
     const { organizerId } = req.params;
