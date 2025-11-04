@@ -1,10 +1,8 @@
 import { Prisma, PrismaClient } from "../generated/prisma/index.js";
 import type { Request, Response } from "express";
-import path from "path";
 import multer from "multer";
 import { cloudinary } from "../config/cloudinary.config.js";
 import fs from "fs";
-import { success } from "zod";
 
 const prisma = new PrismaClient();
 
