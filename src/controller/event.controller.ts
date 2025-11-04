@@ -5,14 +5,50 @@ const prisma = new PrismaClient();
 
 export async function getOngoingEvents(req: Request, res: Response) {
   try {
-    const events = await prisma.event.findMany();
+    const { search, category } = req.query;
+
+    const whereConditions: any = {
+      AND: [],
+    };
+
+    if (search && search !== "") {
+      whereConditions.AND.push({
+        OR: [
+          { name: { contains: search as string, mode: "insensitive" } },
+          { location: { contains: search as string, mode: "insensitive" } },
+          { description: { contains: search as string, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    if (category && category !== "") {
+      whereConditions.AND.push({
+        category: category as any, // FESTIVAL, MUSIC, ART, EDUCATION
+      });
+    }
+
+    // Fetch events pk filter
+    const events = await prisma.event.findMany({
+      where: whereConditions.AND.length > 0 ? whereConditions : {},
+      include: {
+        organizer: {
+          select: {
+            id: true,
+            fullName: true,
+            profilePicture: true,
+          },
+        },
+      },
+      orderBy: { startDate: "asc" },
+    });
 
     res.json({
       success: true,
       data: events,
+      total: events.length,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Error fetching events:", error);
     res.status(500).json({
       success: false,
       message: "Error fetching events.",
@@ -68,12 +104,10 @@ export async function getEventById(req: Request, res: Response) {
   try {
     const { eventId } = req.params;
 
-    // Validasi ID numerik (karena model Event.id adalah Int)
     if (!eventId || isNaN(Number(eventId))) {
       return res.status(400).json({ message: "Invalid event ID" });
     }
 
-    // Ambil event beserta data organizer
     const event = await prisma.event.findUnique({
       where: { id: Number(eventId) },
       include: {
@@ -85,18 +119,42 @@ export async function getEventById(req: Request, res: Response) {
             profilePicture: true,
           },
         },
+        reviews: {
+          include: {
+            transaction: {
+              include: {
+                user: {
+                  select: {
+                    fullName: true,
+                    profilePicture: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
-    // Jika tidak ditemukan
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Response sukses
+    // Hitung average rating
+    const averageRating =
+      event.reviews.length > 0
+        ? event.reviews.reduce((sum, review) => sum + review.rating, 0) /
+          event.reviews.length
+        : 0;
+
     return res.status(200).json({
       message: "Success get event by ID",
-      event,
+      event: {
+        ...event,
+        averageRating: Number(averageRating.toFixed(1)),
+        totalReviews: event.reviews.length,
+      },
     });
   } catch (error) {
     console.error("Error fetching event by ID:", error);
@@ -108,11 +166,25 @@ export async function getEventById(req: Request, res: Response) {
 }
 
 export async function updateEvent(req: Request, res: Response) {
-  const { eventId } = req.params;
-  const data = req.body;
-  const event = await prisma.event.update({
-    where: { id: Number(eventId) },
-    data,
-  });
-  res.status(200).json({ message: "Event updated.", event });
+  try {
+    const { eventId } = req.params;
+    const data = req.body;
+
+    if (!eventId || isNaN(Number(eventId))) {
+      return res.status(400).json({ message: "Invalid event ID" });
+    }
+
+    const event = await prisma.event.update({
+      where: { id: Number(eventId) },
+      data,
+    });
+
+    res.status(200).json({ message: "Event updated.", event });
+  } catch (error) {
+    console.error("Error updating event:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: (error as Error).message,
+    });
+  }
 }
