@@ -7,7 +7,9 @@ import authRoutes from "./routers/auth.router.js";
 import userRoutes from "./routers/user.route.js";
 import eventRoutes from "./routers/event.route.js";
 import txcRoutes from "./routers/transaction.route.js";
+import statsRoutes from "./routers/statistics.router.js";
 import cookieParser from "cookie-parser";
+import path from "path";
 
 const PORT = process.env.PORT;
 const app: Application = express();
@@ -30,6 +32,7 @@ app.use("/users", userRoutes);
 app.use("/auth", authRoutes);
 app.use("/event", eventRoutes);
 app.use("/transaction", txcRoutes);
+app.use("/statistics", statsRoutes);
 
 app.listen(PORT, () => {
   console.log(`API Running at http://localhost:${PORT} `);

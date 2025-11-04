@@ -24,6 +24,9 @@ export async function getAllUsers(req: Request, res: Response) {
 export async function getMe(req: Request, res: Response) {
   try {
     const token = req.cookies.authToken;
+    if (!req.cookies.authToken) {
+      return res.status(200).json({ user: null });
+    }
     if (!token) {
       return res
         .status(401)
@@ -48,7 +51,7 @@ export async function getMe(req: Request, res: Response) {
     if (!user) {
       return res.status(404).json({ message: "User not found." });
     }
-    return res.status(200).json({ user });
+    return res.status(200).json({ message: "Succesfully fetching user." });
   } catch (error) {
     console.error("Error fetching current user: ", error);
     res.status(500).json({ message: "Server Error.", error });

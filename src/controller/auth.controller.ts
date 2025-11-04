@@ -3,6 +3,7 @@ import { PrismaClient } from "../generated/prisma/index.js";
 import jwt from "jsonwebtoken";
 import { loginSchema, registerSchema } from "../validators/auth.validator.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -120,6 +121,7 @@ export async function login(req: Request, res: Response, next: NextFunction) {
           email: existingUser.email,
           role: existingUser.role,
         },
+        token: authToken,
       });
   } catch (error) {
     console.log(error);

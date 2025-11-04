@@ -1,9 +1,28 @@
 import { Prisma, PrismaClient } from "../generated/prisma/index.js";
 import type { Request, Response } from "express";
+import path from "path";
+import multer from "multer";
+import { cloudinary } from "../config/cloudinary.config.js";
+import fs from "fs";
+import { success } from "zod";
 
 const prisma = new PrismaClient();
 
-export const createTransaction = async (req: Request, res: Response) => {
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/payment-proofs";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${file.originalname}`;
+    cb(null, uniqueName);
+  },
+});
+
+export const upload = multer({ storage });
+
+export async function createTransaction(req: Request, res: Response) {
   try {
     const { eventId, ticketQuantity, price, totalPrice } = req.body;
     const userId = req.user?.id;
@@ -47,4 +66,50 @@ export const createTransaction = async (req: Request, res: Response) => {
     console.error(err);
     res.status(500).json({ message: "Failed to create transaction" });
   }
-};
+}
+
+export async function getMyTransactions(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    const transactions = await prisma.transaction.findMany({
+      where: { userId },
+      include: { event: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(transactions);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to get transactions" });
+  }
+}
+
+export async function uploadPaymentProof(req: Request, res: Response) {
+  try {
+    const { transactionId } = req.body;
+    const paymentProof = req.file;
+
+    if (!paymentProof) {
+      return res.status(400).json({ message: "File not found." });
+    }
+
+    const uploadResult = await cloudinary.uploader.upload(paymentProof?.path);
+    await prisma.transaction.update({
+      where: { id: transactionId },
+      data: {
+        paymentProof: uploadResult.secure_url,
+        status: "WAITING_FOR_ADMIN_CONFIRMATION",
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment proof uploaded successfully",
+    });
+  } catch (err) {
+    console.error("Upload failed:", err);
+    return res.status(500).json({ message: "Failed to upload payment proof" });
+  }
+}
