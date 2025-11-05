@@ -86,28 +86,159 @@ export async function getMyTransactions(req: Request, res: Response) {
 
 export async function uploadPaymentProof(req: Request, res: Response) {
   try {
-    const { transactionId } = req.body;
-    const paymentProof = req.file;
+    const { id } = req.params;
 
-    if (!paymentProof) {
-      return res.status(400).json({ message: "File not found." });
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const uploadResult = await cloudinary.uploader.upload(paymentProof?.path);
-    await prisma.transaction.update({
-      where: { id: transactionId },
+    // upload ke Cloudinary
+    const filePath = req.file.path;
+    const cloudinaryUpload = await cloudinary.uploader.upload(filePath, {
+      folder: "payment-proofs",
+      resource_type: "auto",
+    });
+
+    // simpan URL dari Cloudinary ke database
+    const transaction = await prisma.transaction.update({
+      where: { id: Number(id) },
       data: {
-        paymentProof: uploadResult.secure_url,
+        paymentProof: cloudinaryUpload.secure_url,
         status: "WAITING_FOR_ADMIN_CONFIRMATION",
       },
     });
 
-    return res.status(200).json({
-      success: true,
+    // utk hapus file lokal setelah diupload
+    fs.unlinkSync(filePath);
+
+    res.status(200).json({
       message: "Payment proof uploaded successfully",
+      transaction,
     });
   } catch (err) {
-    console.error("Upload failed:", err);
-    return res.status(500).json({ message: "Failed to upload payment proof" });
+    console.error("Upload error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function getPendingTransactions(req: Request, res: Response) {
+  try {
+    const transactions = await prisma.transaction.findMany({
+      where: { status: "WAITING_FOR_ADMIN_CONFIRMATION" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+          },
+        },
+        event: {
+          select: {
+            id: true,
+            name: true,
+            location: true,
+            startDate: true,
+            endDate: true,
+          },
+        },
+        usedVoucher: {
+          select: { id: true, code: true },
+        },
+        usedCoupon: {
+          select: { id: true, code: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!transactions || transactions.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    res.status(200).json(transactions);
+  } catch (err) {
+    console.error("Error fetching pending transactions:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function updateTransactionStatus(req: Request, res: Response) {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedStatuses = ["DONE", "REJECTED"];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    const existingTx = await prisma.transaction.findUnique({
+      where: { id: Number(id) },
+      include: { event: true },
+    });
+
+    if (!existingTx) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Update status transaksi
+      const updatedTx = await tx.transaction.update({
+        where: { id: Number(id) },
+        data: { status },
+      });
+
+      if (status === "DONE") {
+        await tx.event.update({
+          where: { id: existingTx.eventId },
+          data: {
+            remainingSeats: {
+              decrement: existingTx.ticketQuantity,
+            },
+          },
+        });
+      }
+
+      // Jika transaksi ditolak maka kembalikan seat & poin
+      if (status === "REJECTED") {
+        // kembalikan seat
+        await tx.event.update({
+          where: { id: existingTx.eventId },
+          data: {
+            remainingSeats: {
+              increment: existingTx.ticketQuantity,
+            },
+          },
+        });
+
+        // kembalikan poin (kalau user pakai)
+        if (existingTx.usedPoint && existingTx.usedPoint > 0) {
+          const expiredAt = new Date();
+          expiredAt.setMonth(expiredAt.getMonth() + 3);
+
+          await tx.point.create({
+            data: {
+              userId: existingTx.userId,
+              amount: existingTx.usedPoint,
+              source: "REFUND", // ganti sesuai enum PointSource kamu
+              expiredAt,
+              isExpired: false,
+            },
+          });
+        }
+      }
+
+      return updatedTx;
+    });
+
+    return res.status(200).json({
+      message: `Transaction status updated to ${status}`,
+      transaction: result,
+    });
+  } catch (err) {
+    console.error("Error updating transaction status:", err);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 }
