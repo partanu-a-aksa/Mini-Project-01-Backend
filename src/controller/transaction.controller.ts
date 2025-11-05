@@ -87,26 +87,36 @@ export async function getMyTransactions(req: Request, res: Response) {
 export async function uploadPaymentProof(req: Request, res: Response) {
   try {
     const { id } = req.params;
-    const { paymentProof } = req.body;
 
-    if (!paymentProof) {
-      return res.status(400).json({ message: "Payment proof URL required" });
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
 
+    // upload ke Cloudinary
+    const filePath = req.file.path;
+    const cloudinaryUpload = await cloudinary.uploader.upload(filePath, {
+      folder: "payment-proofs",
+      resource_type: "auto",
+    });
+
+    // simpan URL dari Cloudinary ke database
     const transaction = await prisma.transaction.update({
       where: { id: Number(id) },
       data: {
-        paymentProof,
+        paymentProof: cloudinaryUpload.secure_url,
         status: "WAITING_FOR_ADMIN_CONFIRMATION",
       },
     });
+
+    // utk hapus file lokal setelah diupload
+    fs.unlinkSync(filePath);
 
     res.status(200).json({
       message: "Payment proof uploaded successfully",
       transaction,
     });
   } catch (err) {
-    console.error(err);
+    console.error("Upload error:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }

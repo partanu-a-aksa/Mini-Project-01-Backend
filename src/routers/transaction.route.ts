@@ -13,7 +13,12 @@ const router = express.Router();
 
 router.post("/buy", verifyToken, createTransaction);
 router.get("/user", verifyToken, getMyTransactions);
-router.post("/:id/upload-proof", verifyToken, uploadPaymentProof);
+router.post(
+  "/:id/upload-proof",
+  verifyToken,
+  upload.single("paymentProof"),
+  uploadPaymentProof
+);
 router.get("/pending", verifyToken, getPendingTransactions);
 router.patch("/:id/status", verifyToken, updateTransactionStatus);
 
