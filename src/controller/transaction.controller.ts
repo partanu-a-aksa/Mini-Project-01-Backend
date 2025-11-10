@@ -124,8 +124,17 @@ export async function uploadPaymentProof(req: Request, res: Response) {
 export async function getPendingTransactions(req: Request, res: Response) {
   try {
     const transactions = await prisma.transaction.findMany({
-      where: { status: "WAITING_FOR_ADMIN_CONFIRMATION" },
-      include: {
+      where: {
+        status: "WAITING_FOR_ADMIN_CONFIRMATION",
+        // Filter supaya hanya transaksi event milik organizer yang login
+        // event: { organizerId: req.user.id },
+      },
+      select: {
+        id: true,
+        ticketQuantity: true,
+        totalPrice: true,
+        status: true,
+        paymentProof: true,
         user: {
           select: {
             id: true,
@@ -142,19 +151,9 @@ export async function getPendingTransactions(req: Request, res: Response) {
             endDate: true,
           },
         },
-        usedVoucher: {
-          select: { id: true, code: true },
-        },
-        usedCoupon: {
-          select: { id: true, code: true },
-        },
       },
       orderBy: { createdAt: "desc" },
     });
-
-    if (!transactions || transactions.length === 0) {
-      return res.status(200).json([]);
-    }
 
     res.status(200).json(transactions);
   } catch (err) {
