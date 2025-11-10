@@ -5,7 +5,11 @@ const prisma = new PrismaClient();
 
 export async function getOngoingEvents(req: Request, res: Response) {
   try {
-    const { search, category } = req.query;
+    const { search, category, page = "1", limit = "10" } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
 
     const whereConditions: any = {
       AND: [],
@@ -27,9 +31,14 @@ export async function getOngoingEvents(req: Request, res: Response) {
       });
     }
 
-    // Fetch events pk filter
+    const where = whereConditions.AND.length > 0 ? whereConditions : {};
+
+    // Get total count for pagination
+    const total = await prisma.event.count({ where });
+
+    // Fetch events with pagination
     const events = await prisma.event.findMany({
-      where: whereConditions.AND.length > 0 ? whereConditions : {},
+      where,
       include: {
         organizer: {
           select: {
@@ -40,12 +49,19 @@ export async function getOngoingEvents(req: Request, res: Response) {
         },
       },
       orderBy: { startDate: "asc" },
+      skip,
+      take: limitNum,
     });
 
     res.json({
       success: true,
       data: events,
-      total: events.length,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
     });
   } catch (error) {
     console.error("Error fetching events:", error);
