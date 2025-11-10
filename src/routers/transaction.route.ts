@@ -1,6 +1,8 @@
 import express from "express";
 import {
+  checkout,
   createTransaction,
+  getCheckoutInfo,
   getMyTransactions,
   getPendingTransactions,
   updateTransactionStatus,
@@ -10,6 +12,9 @@ import {
 import { verifyToken } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
+
+router.post("/checkout", verifyToken, checkout);
+router.get("/checkout-info", verifyToken, getCheckoutInfo);
 
 router.post("/buy", verifyToken, createTransaction);
 router.get("/user", verifyToken, getMyTransactions);
