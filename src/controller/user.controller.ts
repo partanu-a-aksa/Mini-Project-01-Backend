@@ -112,3 +112,121 @@ export async function updateUserProfile(req: Request, res: Response) {
     res.status(500).json({ message: "Server error" });
   }
 }
+
+export async function getUserPoints(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const now = new Date();
+
+    // Get all non-expired points
+    const points = await prisma.point.findMany({
+      where: {
+        userId,
+        isExpired: false,
+        expiredAt: {
+          gt: now,
+        },
+      },
+      orderBy: {
+        expiredAt: "asc", // Closest to expiry
+      },
+    });
+
+    // Calculate total points
+    const totalPoints = points.reduce((sum, point) => sum + point.amount, 0);
+
+    res.status(200).json({
+      totalPoints,
+      points: points.map((p) => ({
+        id: p.id,
+        amount: p.amount,
+        source: p.source,
+        expiredAt: p.expiredAt,
+        createdAt: p.createdAt,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching user points:", error);
+    res.status(500).json({ message: "Failed to fetch points" });
+  }
+}
+
+export async function getUserCoupons(req: Request, res: Response) {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const now = new Date();
+
+    // Get all non-expired and unused coupons
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        userId,
+        isUsed: false,
+        expiredAt: {
+          gt: now, // Not expired yet
+        },
+      },
+      orderBy: {
+        expiredAt: "asc", // Closest to expiry first
+      },
+    });
+
+    res.status(200).json(
+      coupons.map((c) => ({
+        id: c.id,
+        code: c.code,
+        discountAmount: c.discountAmount,
+        expiredAt: c.expiredAt,
+        createdAt: c.createdAt,
+      }))
+    );
+  } catch (error) {
+    console.error("Error fetching user coupons:", error);
+    res.status(500).json({ message: "Failed to fetch coupons" });
+  }
+}
+
+export async function getEventVouchers(req: Request, res: Response) {
+  try {
+    const { eventId } = req.params;
+
+    const now = new Date();
+
+    // Get all active vouchers for the event
+    const vouchers = await prisma.voucher.findMany({
+      where: {
+        eventId: Number(eventId),
+        isActive: true,
+        startDate: {
+          lte: now, // Start date is before or equal to now
+        },
+        endDate: {
+          gte: now, // End date is after or equal to now
+        },
+      },
+    });
+
+    res.status(200).json(
+      vouchers.map((v) => ({
+        id: v.id,
+        code: v.code,
+        discountAmount: v.discountAmount,
+        discountType: v.discountType,
+        startDate: v.startDate,
+        endDate: v.endDate,
+      }))
+    );
+  } catch (error) {
+    console.error("Error fetching event vouchers:", error);
+    res.status(500).json({ message: "Failed to fetch vouchers" });
+  }
+}

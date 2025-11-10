@@ -7,7 +7,7 @@ export const fileUpload = multer({
       cb(null, "public");
     },
     filename: (request, file, cb) => {
-      const uniqueName = `BLOGGY-${Date.now}-${file.originalname}`;
+      const uniqueName = `EVENT-${Date.now}-${file.originalname}`;
       cb(null, uniqueName);
     },
   }),
